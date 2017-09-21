@@ -1,14 +1,17 @@
-package main
+package utils
 
 import (
 	"flag"
 	"time"
 	"os"
 	"fmt"
+	"strings"
+	"path/filepath"
+	"errors"
 )
 
 const DEFAULT_TIME_FORMAT = "2006-01-02 15:04:05"
-
+const NAME_LENGTH = 256
 var LOG_PATH = os.Getenv("LL_LOG_PATH")
 var HOST = os.Getenv("LL_HOST")
 
@@ -36,12 +39,31 @@ var FlagMap = map[string]Flag{
 	},
 	"path": {
 		"",
-		"notice path",
+		"Notice path",
 	},
 	"service": {
 		"",
 		"service name",
 	},
+}
+
+func WalkDir(dirPth, suffix string, process func(filename string) bool) error {
+	suffix = strings.ToUpper(suffix) //忽略后缀匹配的大小写
+	err := filepath.Walk(dirPth, func(filename string, fi os.FileInfo, err error) error { //遍历目录
+		if err != nil { //忽略错误
+		 return err
+		}
+		if fi.IsDir() { // 忽略目录
+			return nil
+		}
+		if strings.HasSuffix(strings.ToUpper(fi.Name()), suffix) {
+			if !process(filename) {
+				return errors.New("whoops")
+			}
+		}
+		return nil
+	})
+	return err
 }
 
 func InitFlags() map[string]*string {
@@ -58,13 +80,13 @@ func InitFile(filePath string) *os.File {
 	reader, err := os.Open(filePath)
 
 	if err != nil {
-		notice("ERROR: No such file:", filePath);
+		Notice("ERROR: No such file:", filePath);
 		os.Exit(0)
 	}
 
 	return reader
 }
 
-func notice(arg ...string) {
+func Notice(arg ...string) {
 	fmt.Println(arg)
 }

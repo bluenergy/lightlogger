@@ -1,6 +1,10 @@
 package main
 
-import "time"
+import (
+	"time"
+	"./utils"
+	"./processors"
+)
 
 func main() {
 
@@ -13,30 +17,28 @@ func main() {
 			b. daemon模式
 		3. 标准流程：
 			a. 文件句柄， 错误处理
-	 		b. 定位行
-			c. 输出日志
-			d. stop
+			d. stop - done
 			e. multi client
 			f. tail
-			g. multi log file
+			g. multi log file - done
 			h. daemon
 	*/
 
-	var context = InitFlags()
-	filePath := *context["path"]
+	var context = utils.InitFlags()
+	dirPath := *context["path"]
 
-	reader := InitFile(filePath)
-	defer reader.Close()
+	//dir := utils.InitFile(dirPath)
+	//defer dir.Close()
 
 	host := *context["host"]
 	serviceName := *context["service"]
 
 	if host != "" {
-		daemonMod(reader, host, serviceName)
+		processors.DaemonMod(dirPath, host, serviceName)
 	} else {
-		begin, _ := time.Parse(TIME_FORMAT, *context["begin"])
-		end, _ := time.Parse(TIME_FORMAT, *context["end"])
-		StandaloneMod(reader, begin, end)
+		begin, _ := time.Parse(processors.TIME_FORMAT, *context["begin"])
+		end, _ := time.Parse(processors.TIME_FORMAT, *context["end"])
+		processors.StandaloneMod(dirPath, begin, end)
 	}
 
 }
