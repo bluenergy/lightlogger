@@ -14,6 +14,7 @@ const TCP = "tcp"
 const BUF_SIZE = 4096
 const WINDOW_SIZE = 512
 const RETRY_DURATION = time.Second * 2
+const LINE_BREAK = '\n'
 
 func process(reader *os.File, startPos int64, end time.Time, handler func(buf []byte) bool) {
 	reader.Seek(startPos, 0)
@@ -30,7 +31,8 @@ func timeMatcher(reader io.Reader, handler func(buf []byte) bool, timeMatchedCal
 	buf := make([]byte, WINDOW_SIZE)
 	for {
 		_, err = reader.Read(buf)
-		if err == io.EOF {
+
+		if err != nil {
 			break
 		}
 

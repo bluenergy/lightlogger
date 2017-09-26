@@ -3,8 +3,8 @@ syntax = "proto3";
 package lightlog; 
 message cmd 
 { 
-    string  cmd         = 1;
-    int32   seq         = 2;
+    string  id          = 1;
+    string  cmd         = 2;
     int64   startTime   = 3;
     int64   endTime     = 4;
     bytes   data        = 5;

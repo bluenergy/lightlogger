@@ -12,8 +12,8 @@ import (
 )
 
 const STOP = "STOP"
-const SERVER_NAME = "SERVER_NAME"
 const UPDATE = "UPDATE"
+const RESULT = "RESULT"
 const SEARCH = "SEARCH"
 const SUFFIX = ".log"
 
@@ -35,7 +35,7 @@ func getConn(serviceName string, host string, dir string) {
 			<-timer.C
 			continue
 		} else {
-			data := commandBuilder(SERVER_NAME, 0,0, 0, []byte(serviceName))
+			data, _ := commandBuilder(UPDATE, "", int64(0), int64(0), []byte(serviceName))
 			conn.Write(data)
 		}
 
@@ -70,7 +70,6 @@ func receiver(conn net.Conn, dir string) {
 			utils.Notice("ERROR: read cmd error:", err.Error())
 			continue
 		}
-
 		commandHandler(cmd, conn, dir)
 	}
 }
@@ -82,31 +81,32 @@ func commandParser(size int, buf []byte) (lightlog.Cmd, error) {
 	return *cmd, err
 }
 
-func commandBuilder(cmd string, seq int32, startTime int64, endTime int64, buf []byte) []byte {
-	command := &lightlog.Cmd {
+func commandBuilder(cmd string, id string, startTime int64, endTime int64, buf []byte) ([]byte, error) {
+	command := &lightlog.Cmd{
 		Cmd:       cmd,
-		Seq:       seq,
+		Id:       id,
 		StartTime: startTime,
 		EndTime:   endTime,
 		Data:      buf,
 	}
-
+	var err error
 	data, err := proto.Marshal(command)
 	if err != nil {
 		utils.Notice("marshaling error: ", err.Error())
-		os.Exit(0)
+		//os.Exit(0)
 	}
 
-	return data
+	return data, err
 }
 
-func commandHandler(cmd lightlog.Cmd, conn net.Conn, dir string)  {
+func commandHandler(cmd lightlog.Cmd, conn net.Conn, dir string) {
 	stopSigCH := make(chan string, 2)
+	utils.Notice(cmd.Cmd)
 	switch cmd.Cmd {
 	case SEARCH:
 		go sender(conn, dir, cmd, stopSigCH)
 	case STOP:
-		stopSigCH <-STOP
+		stopSigCH <- STOP
 	}
 }
 
@@ -118,19 +118,21 @@ func sender(conn net.Conn, dir string, cmd lightlog.Cmd, stopSigCH chan string) 
 		start := time.Unix(cmd.GetStartTime(), 0)
 		end := time.Unix(cmd.GetEndTime(), 0)
 
-		startPos, err := fastLocateStartPos(reader, start)
+		_, err := fastLocateStartPos(reader, start)
 
 		if err != nil {
 			return false
 		}
 
-		process(reader, startPos, end, func(buf []byte) bool {
+		process(reader, 0, end, func(buf []byte) bool {
 			select {
 			case <-stopSigCH:
 				return false
 			default:
-				data := commandBuilder(UPDATE, cmd.Seq, 0, 0, buf)
-				conn.Write(data)
+				data, err := commandBuilder(RESULT, cmd.GetId(), int64(0), int64(0), buf)
+				if err == nil {
+					conn.Write(data)
+				}
 				return true
 			}
 		})

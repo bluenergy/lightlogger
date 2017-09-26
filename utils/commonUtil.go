@@ -11,40 +11,57 @@ import (
 )
 
 const DEFAULT_TIME_FORMAT = "2006-01-02 15:04:05"
-const NAME_LENGTH = 256
-var LOG_PATH = os.Getenv("LL_LOG_PATH")
-var HOST = os.Getenv("LL_HOST")
 
 type Flag struct {
-	value string
+	env string
+	defaultValue string
 	desc  string
 }
 
 var FlagMap = map[string]Flag{
 	"begin": {
+		"",
 		time.Unix(0, 0).Format(DEFAULT_TIME_FORMAT),
 		"start time",
 	},
 	"end": {
+		"",
 		time.Now().Format(DEFAULT_TIME_FORMAT),
 		"end time",
 	},
 	"host": {
-		"",
+		"LL_HOST",
+		"localhost:9000",
 		"host",
 	},
 	"timeMatcher": {
+		"LL_TIME_MATCHER",
 		"",
 		"matched word",
 	},
 	"path": {
-		"",
+		"LL_LOG_PATH",
+		".",
 		"Notice path",
 	},
 	"service": {
+		"LL_SERVICE_NAME",
 		"",
 		"service name",
 	},
+	"daemon": {
+		"",
+		"",
+		"daemonize",
+	},
+}
+
+func getEnvOrDefaultValue(key string) string {
+	if FlagMap[key].env != "" {
+		return os.Getenv(FlagMap[key].env)
+	} else {
+		return FlagMap[key].defaultValue
+	}
 }
 
 func WalkDir(dirPth, suffix string, process func(filename string) bool) error {
@@ -70,9 +87,13 @@ func InitFlags() map[string]*string {
 	var context map[string] *string
 	context = make(map[string] *string)
 	for name, v := range FlagMap {
-		context[name] = flag.String(name, v.value, v.desc)
+		context[name] = flag.String(name, getEnvOrDefaultValue(name), v.desc)
 	}
 	flag.Parse()
+
+	for name := range context {
+		Notice("Config:", name, "(", *context[name], ")")
+	}
 	return context
 }
 
